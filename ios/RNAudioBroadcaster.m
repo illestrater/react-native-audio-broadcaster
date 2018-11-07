@@ -41,6 +41,7 @@ RCT_EXPORT_METHOD(stop)
     NSLog(@"STOPPING");
     if (audioProcessor != nil) {
         [audioProcessor stop];
+        audioProcessor = nil;
     }
     // callback(@[@{@"STATE": @"STOPPED"}]);
 }
