@@ -5,7 +5,11 @@
 #import <React/RCTBridgeModule.h>
 #endif
 
+@class AudioProcessor;
+
 @interface RNAudioBroadcaster : NSObject <RCTBridgeModule>
+
+@property (retain, nonatomic) AudioProcessor *audioProcessor;
 
 @end
   

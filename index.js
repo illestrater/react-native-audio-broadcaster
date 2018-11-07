@@ -23,8 +23,12 @@ class Broadcaster extends EventEmitter {
     // });
   }
 
-  init(callback = _.noop) {
-    RNAudioBroadcaster.init(0, callback);
+  init(settings, callback = _.noop) {
+    RNAudioBroadcaster.init(settings, callback);
+  }
+
+  stop() {
+    RNAudioBroadcaster.stop();
   }
 
   get test() { return 'hi'; }
