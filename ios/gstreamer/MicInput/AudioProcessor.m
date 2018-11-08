@@ -21,6 +21,8 @@ static OSStatus recordingCallback(void *inRefCon,
 	
 	// the data gets rendered here
     AudioBuffer buffer;
+
+    NSLog(@"recording callback");
     
     // a variable where we check the status
     OSStatus status;
@@ -34,7 +36,7 @@ static OSStatus recordingCallback(void *inRefCon,
      on this point we define the number of channels, which is mono
      for the iphone. the number of frames is usally 512 or 1024.
      */
-    // printf("%d=====\n", (int)inNumberFrames);
+    printf("%d=====\n", (int)inNumberFrames);
     buffer.mDataByteSize = inNumberFrames * sizeof(short int); // sample size
     buffer.mNumberChannels = NUMBER_CHANNEL; // one channel
 	buffer.mData = malloc( inNumberFrames * sizeof(short int) ); // buffer size
@@ -72,6 +74,7 @@ static OSStatus playbackCallback(void *inRefCon,
      This is the reference to the object who owns the callback.
      */
     AudioProcessor *audioProcessor = (AudioProcessor*) inRefCon;
+    NSLog(@"Playback callback");
     
     // iterate over incoming stream an copy to output stream
 	for (int i=0; i < ioData->mNumberBuffers; i++) { 
@@ -107,6 +110,13 @@ static OSStatus playbackCallback(void *inRefCon,
 -(void)initializeAudio
 {    
     OSStatus status;
+    
+//    status = AudioSessionSetActive(true);
+//    assert(status == noErr);
+//
+    UInt32 category = kAudioSessionCategory_PlayAndRecord;
+    status = AudioSessionSetProperty(kAudioSessionProperty_AudioCategory, sizeof(UInt32), &category);
+    assert(status == noErr);
 	
 	// We define the audio component
 	AudioComponentDescription desc;
@@ -189,6 +199,7 @@ static OSStatus playbackCallback(void *inRefCon,
         the audio processor object
      */
 	AURenderCallbackStruct callbackStruct;
+    memset(&callbackStruct, 0, sizeof(AURenderCallbackStruct));
     
     // set recording callback
 	callbackStruct.inputProc = recordingCallback; // recordingCallback pointer
@@ -247,8 +258,7 @@ static OSStatus playbackCallback(void *inRefCon,
 	status = AudioUnitInitialize(audioUnit);
 	[self hasError:status:__FILE__:__LINE__];
     
-    NSLog(@"Started");
-    
+    NSLog(@"Started"); 
 }
 
 #pragma mark controll stream
@@ -414,8 +424,8 @@ static OSStatus playbackCallback(void *inRefCon,
     int mp3_write = lame_encode_buffer(mLame, (short int*) audioBufferList->mBuffers[0].mData, (short int*) audioBufferList->mBuffers[0].mData, size, mp3_buffer, size * 4);
 
 //    int mp3_write = lame_encode_buffer_interleaved(mLame, (short int*) audioBufferList->mBuffers[0].mData, 512, mp3_buffer, size * 4 + 7200);
-    // printf("size ::: %d\n", size);
-    // printf("buffer ===== %s\n", mp3_buffer);
+    printf("size ::: %d\n", size);
+    printf("buffer ===== %s\n", mp3_buffer);
     // ShoutOutputStream_Send(mp3_buffer, mp3_write);
     shout_send(shout, mp3_buffer, mp3_write);
     shout_sync(shout);
