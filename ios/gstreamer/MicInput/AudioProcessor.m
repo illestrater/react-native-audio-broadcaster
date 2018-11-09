@@ -36,7 +36,7 @@ static OSStatus recordingCallback(void *inRefCon,
      on this point we define the number of channels, which is mono
      for the iphone. the number of frames is usally 512 or 1024.
      */
-    printf("%d=====\n", (int)inNumberFrames);
+    // printf("%d=====\n", (int)inNumberFrames);
     buffer.mDataByteSize = inNumberFrames * sizeof(short int); // sample size
     buffer.mNumberChannels = NUMBER_CHANNEL; // one channel
 	buffer.mData = malloc( inNumberFrames * sizeof(short int) ); // buffer size
@@ -97,6 +97,8 @@ static OSStatus playbackCallback(void *inRefCon,
 @implementation AudioProcessor
 @synthesize audioUnit, audioBuffer, gain;
 
+float averagePower = -60;
+
 -(AudioProcessor*)init
 {
     self = [super init];
@@ -117,7 +119,7 @@ static OSStatus playbackCallback(void *inRefCon,
     UInt32 category = kAudioSessionCategory_PlayAndRecord;
     status = AudioSessionSetProperty(kAudioSessionProperty_AudioCategory, sizeof(UInt32), &category);
     assert(status == noErr);
-	
+
 	// We define the audio component
 	AudioComponentDescription desc;
 	desc.componentType = kAudioUnitType_Output; // we want to ouput
@@ -183,13 +185,13 @@ static OSStatus playbackCallback(void *inRefCon,
      [self hasError:status:__FILE__:__LINE__];
     
     // set the format on the input stream
-	status = AudioUnitSetProperty(audioUnit, 
-								  kAudioUnitProperty_StreamFormat, 
-								  kAudioUnitScope_Input, 
-								  kOutputBus, 
-								  &audioFormat, 
-								  sizeof(audioFormat));
-	[self hasError:status:__FILE__:__LINE__];
+//    status = AudioUnitSetProperty(audioUnit,
+//                                  kAudioUnitProperty_StreamFormat,
+//                                  kAudioUnitScope_Input,
+//                                  kOutputBus,
+//                                  &audioFormat,
+//                                  sizeof(audioFormat));
+//    [self hasError:status:__FILE__:__LINE__];
 	
 	
 	
@@ -208,7 +210,7 @@ static OSStatus playbackCallback(void *inRefCon,
     // set input callback to recording callback on the input bus
 	status = AudioUnitSetProperty(audioUnit, 
                                   kAudioOutputUnitProperty_SetInputCallback, 
-								  kAudioUnitScope_Global, 
+								  kAudioUnitScope_Input,
 								  kInputBus, 
 								  &callbackStruct, 
 								  sizeof(callbackStruct));
@@ -238,12 +240,12 @@ static OSStatus playbackCallback(void *inRefCon,
      we need to tell the audio unit to allocate the render buffer,
      that we can directly write into it.
      */
-	status = AudioUnitSetProperty(audioUnit, 
-								  kAudioUnitProperty_ShouldAllocateBuffer,
-								  kAudioUnitScope_Output, 
-								  kInputBus,
-								  &flag, 
-								  sizeof(flag));
+//    status = AudioUnitSetProperty(audioUnit,
+//                                  kAudioUnitProperty_ShouldAllocateBuffer,
+//                                  kAudioUnitScope_Output,
+//                                  kInputBus,
+//                                  &flag,
+//                                  sizeof(flag));
 	
 
     /*
@@ -350,6 +352,11 @@ static OSStatus playbackCallback(void *inRefCon,
     return gain;
 }
 
+-(float)getLevels
+{
+    return averagePower;
+}
+
 #pragma mark processing
 
 -(void)processBuffer: (AudioBufferList*) audioBufferList
@@ -373,9 +380,13 @@ static OSStatus playbackCallback(void *inRefCon,
     SInt16 *editBuffer = audioBufferList->mBuffers[0].mData;
     int size = audioBufferList->mBuffers[0].mDataByteSize / 2;
     short int tempBuffer[size];
+
+    float totalPower = 0;
     
     // loop over every packet
     for (int nb = 0; nb < (size); nb++) {
+
+        totalPower += fabs((float)editBuffer[nb] / 32767.0);
 
         // we check if the gain has been modified to save resoures
         if (gain != 0) {
@@ -410,7 +421,7 @@ static OSStatus playbackCallback(void *inRefCon,
              */
              
             gainSample = (1.5 * gainSample) - 0.5 * gainSample * gainSample * gainSample;
-            
+
             // multiply the new signal back to short 
             gainSample = gainSample * 32767.0;
             
@@ -419,13 +430,17 @@ static OSStatus playbackCallback(void *inRefCon,
             tempBuffer[nb] = (short int) gainSample;
         }
     }
-    
+
+    averagePower = totalPower / (size);
+
+    printf("AVERAGE POWER: %f \n", averagePower);
+
     unsigned char mp3_buffer[size * 4];
     int mp3_write = lame_encode_buffer(mLame, (short int*) audioBufferList->mBuffers[0].mData, (short int*) audioBufferList->mBuffers[0].mData, size, mp3_buffer, size * 4);
 
 //    int mp3_write = lame_encode_buffer_interleaved(mLame, (short int*) audioBufferList->mBuffers[0].mData, 512, mp3_buffer, size * 4 + 7200);
-    printf("size ::: %d\n", size);
-    printf("buffer ===== %s\n", mp3_buffer);
+    // printf("size ::: %d\n", size);
+    // printf("buffer ===== %s\n", mp3_buffer);
     // ShoutOutputStream_Send(mp3_buffer, mp3_write);
     shout_send(shout, mp3_buffer, mp3_write);
     shout_sync(shout);
