@@ -27,6 +27,10 @@ class Broadcaster extends EventEmitter {
     RNAudioBroadcaster.init(settings, callback);
   }
 
+  levels(callback = _.noop) {
+    RNAudioBroadcaster.levels(callback);
+  }
+
   stop() {
     RNAudioBroadcaster.stop();
   }

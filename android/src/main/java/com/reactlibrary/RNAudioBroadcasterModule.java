@@ -9,6 +9,7 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Callback;
+import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.WritableNativeMap;
 
@@ -19,6 +20,8 @@ import cc.echonet.coolmicdspjava.WrapperConstants;
 public class RNAudioBroadcasterModule extends ReactContextBaseJavaModule {
 
   private final ReactApplicationContext reactContext;
+  private Integer initialized = 0;
+  private String level = "-60";
 
   public RNAudioBroadcasterModule(ReactApplicationContext reactContext) {
     super(reactContext);
@@ -31,17 +34,16 @@ public class RNAudioBroadcasterModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void init(Integer playerId, Callback callback) {
-    String server = "cue.dj";
-    Integer port_num = 1337;
+  public void init(ReadableMap settings, Callback callback) {
+    String server = settings.getString("url");
+    Integer port_num = settings.getInt("port");
     String username = "source";
-    String password = "ethsavedmusic";
-    String mountpoint = "holyshit";
+    String password = settings.getString("password");
+    String mountpoint = settings.getString("mount");
     String codec_string = "audio/ogg; codec=vorbis";
     String sampleRate_string = "44100";
-    String channel_string = "1";
+    String channel_string = "2";
     int sampleRate = Integer.parseInt(sampleRate_string);
-    Log.e("INITIALIZING INITIAILZING?: ", "hello");
 
     Integer buffersize = AudioRecord.getMinBufferSize(Integer.parseInt(sampleRate_string), Integer.parseInt(channel_string) == 1 ? AudioFormat.CHANNEL_IN_MONO : AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT);
 
@@ -56,9 +58,8 @@ public class RNAudioBroadcasterModule extends ReactContextBaseJavaModule {
       status = Wrapper.start();
       Log.e("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ: ", "STARTING........");
     }
-    
-    data.putInt("hi", buffersize);
 
+    data.putInt("hi", buffersize);
 
     if (callback != null) {
         callback.invoke(data);
@@ -66,9 +67,27 @@ public class RNAudioBroadcasterModule extends ReactContextBaseJavaModule {
     }
   }
 
+  @ReactMethod
+  public void stop() {
+    Log.e("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ: ", "STOPPING");
+    if (Wrapper.getState() == WrapperConstants.WrapperInitializationStatus.WRAPPER_INTITIALIZED && Wrapper.hasCore()) {
+        Wrapper.stop();
+        Wrapper.unref();
+    }
+  }
+
+  @ReactMethod
+  public void levels(Callback callback) {
+    WritableMap data = new WritableNativeMap();
+    data.putString("level", level);
+    Log.e("BROADCASTING LEVELS: ", level);
+    if (callback != null) {
+        callback.invoke(data);
+        return;
+    }
+  }
+
   private void callbackHandler(WrapperConstants.WrapperCallbackEvents what, int arg0, int arg1) {
-      Log.e("LOOOOOGS?: ", String.valueOf(arg0));
-      Log.e("LOOOOOGS?: ", String.valueOf(arg1));
       switch (what) {
           case THREAD_POST_START:
               break;
@@ -86,6 +105,6 @@ public class RNAudioBroadcasterModule extends ReactContextBaseJavaModule {
   }
 
   private void callbackVUMeterHandler(VUMeterResult result) {
-      Log.e("Handler VUMeter: ", String.valueOf(result.global_power));
+      level = String.valueOf(result.global_power);
   }
 }
