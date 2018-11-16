@@ -53,6 +53,7 @@
 // gain
 -(void)setGain:(float)gainValue;
 -(float)getGain;
+-(float)getLevels;
 
 // error managment
 -(void)hasError:(int)statusCode:(char*)file:(int)line;

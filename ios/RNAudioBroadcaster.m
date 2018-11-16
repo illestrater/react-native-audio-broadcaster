@@ -46,5 +46,16 @@ RCT_EXPORT_METHOD(stop)
     // callback(@[@{@"STATE": @"STOPPED"}]);
 }
 
+RCT_EXPORT_METHOD(levels: (RCTResponseSenderBlock) callback)
+{
+    NSLog(@"GETTING LEVELS");
+    if (audioProcessor != nil) {
+        float level = [audioProcessor getLevels];
+        callback(@[@{@"level": [NSString stringWithFormat:@"%f", level]}]);
+    } else {
+        callback(@[@{@"level": @"WTF"}]);
+    }
+}
+
 @end
   
