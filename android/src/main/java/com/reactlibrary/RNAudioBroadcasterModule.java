@@ -52,11 +52,8 @@ public class RNAudioBroadcasterModule extends ReactContextBaseJavaModule {
 
     int status = Wrapper.init(this, server, port_num, username, password, mountpoint, codec_string, sampleRate, Integer.parseInt(channel_string), buffersize);
     
-    if (status != 0) {
-      Log.e("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ: ", "ERROR WITH INITIALIZATION");
-    } else {
+    if (status == 0) {
       status = Wrapper.start();
-      Log.e("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ: ", "STARTING........");
     }
 
     data.putInt("hi", buffersize);
@@ -69,7 +66,6 @@ public class RNAudioBroadcasterModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void stop() {
-    Log.e("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ: ", "STOPPING");
     if (Wrapper.getState() == WrapperConstants.WrapperInitializationStatus.WRAPPER_INTITIALIZED && Wrapper.hasCore()) {
         Wrapper.stop();
         Wrapper.unref();
@@ -80,7 +76,6 @@ public class RNAudioBroadcasterModule extends ReactContextBaseJavaModule {
   public void levels(Callback callback) {
     WritableMap data = new WritableNativeMap();
     data.putString("level", level);
-    Log.e("BROADCASTING LEVELS: ", level);
     if (callback != null) {
         callback.invoke(data);
         return;
