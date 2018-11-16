@@ -3,7 +3,6 @@ package com.reactlibrary;
 
 import android.media.AudioRecord;
 import android.media.AudioFormat;
-import android.util.Log;
 
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
