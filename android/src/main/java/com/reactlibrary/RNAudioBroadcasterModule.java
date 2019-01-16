@@ -47,13 +47,16 @@ public class RNAudioBroadcasterModule extends ReactContextBaseJavaModule {
     Integer buffersize = AudioRecord.getMinBufferSize(Integer.parseInt(sampleRate_string), Integer.parseInt(channel_string) == 1 ? AudioFormat.CHANNEL_IN_MONO : AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT);
 
     WritableMap data = new WritableNativeMap();
-    Wrapper.init();
+    // Wrapper.init();
 
-    int status = Wrapper.init(this, server, port_num, username, password, mountpoint, codec_string, sampleRate, Integer.parseInt(channel_string), buffersize);
+    // int status = Wrapper.init(this, server, port_num, username, password, mountpoint, codec_string, sampleRate, Integer.parseInt(channel_string), buffersize);
     
-    if (status == 0) {
-      status = Wrapper.start();
-    }
+    // if (status == 0) {
+    //   status = Wrapper.start();
+    // }
+
+    Intent intent = new Intent(this, HelloService.class);
+    AudioBroadcastService.startForegroundService(intent);
 
     data.putInt("hi", buffersize);
 
@@ -65,10 +68,11 @@ public class RNAudioBroadcasterModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void stop() {
-    if (Wrapper.getState() == WrapperConstants.WrapperInitializationStatus.WRAPPER_INTITIALIZED && Wrapper.hasCore()) {
-        Wrapper.stop();
-        Wrapper.unref();
-    }
+    AudioBroadcastService.stopService();
+    // if (Wrapper.getState() == WrapperConstants.WrapperInitializationStatus.WRAPPER_INTITIALIZED && Wrapper.hasCore()) {
+    //     Wrapper.stop();
+    //     Wrapper.unref();
+    // }
   }
 
   @ReactMethod
