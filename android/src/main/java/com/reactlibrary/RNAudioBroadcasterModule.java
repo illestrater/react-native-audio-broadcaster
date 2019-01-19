@@ -3,6 +3,11 @@ package com.reactlibrary;
 
 import android.media.AudioRecord;
 import android.media.AudioFormat;
+import android.content.Intent;
+import android.app.Service;
+import android.util.Log;
+import android.net.Uri;
+import android.provider.Settings;
 
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -17,10 +22,11 @@ import cc.echonet.coolmicdspjava.Wrapper;
 import cc.echonet.coolmicdspjava.WrapperConstants;
 
 public class RNAudioBroadcasterModule extends ReactContextBaseJavaModule {
-
+  private AudioBroadcastService broadcaster = new AudioBroadcastService();
   private final ReactApplicationContext reactContext;
   private Integer initialized = 0;
   private String level = "-60";
+  private Intent intent;
 
   public RNAudioBroadcasterModule(ReactApplicationContext reactContext) {
     super(reactContext);
@@ -34,31 +40,22 @@ public class RNAudioBroadcasterModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void init(ReadableMap settings, Callback callback) {
-    String server = settings.getString("url");
-    Integer port_num = settings.getInt("port");
-    String username = "source";
-    String password = settings.getString("password");
-    String mountpoint = settings.getString("mount");
-    String codec_string = "audio/ogg; codec=vorbis";
-    String sampleRate_string = "44100";
-    String channel_string = "2";
-    int sampleRate = Integer.parseInt(sampleRate_string);
+    Log.e("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ: ", "INITIALIZING");
 
-    Integer buffersize = AudioRecord.getMinBufferSize(Integer.parseInt(sampleRate_string), Integer.parseInt(channel_string) == 1 ? AudioFormat.CHANNEL_IN_MONO : AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT);
+    ReactApplicationContext context = getReactApplicationContext();
+    Intent intentBattery = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+    intentBattery.setData(Uri.parse("package:" + "com.cuenative"));
+    context.startActivity(intentBattery);
+
+    intent = new Intent(context, AudioBroadcastService.class);
+    intent.putExtra("url", settings.getString("url"));
+    intent.putExtra("port", String.valueOf(settings.getInt("port")));
+    intent.putExtra("password", settings.getString("password"));
+    intent.putExtra("mount", settings.getString("mount"));
+    context.startService(intent);
 
     WritableMap data = new WritableNativeMap();
-    // Wrapper.init();
-
-    // int status = Wrapper.init(this, server, port_num, username, password, mountpoint, codec_string, sampleRate, Integer.parseInt(channel_string), buffersize);
-    
-    // if (status == 0) {
-    //   status = Wrapper.start();
-    // }
-
-    Intent intent = new Intent(this, HelloService.class);
-    AudioBroadcastService.startForegroundService(intent);
-
-    data.putInt("hi", buffersize);
+    data.putInt("hi", 1);
 
     if (callback != null) {
         callback.invoke(data);
@@ -68,11 +65,8 @@ public class RNAudioBroadcasterModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void stop() {
-    AudioBroadcastService.stopService();
-    // if (Wrapper.getState() == WrapperConstants.WrapperInitializationStatus.WRAPPER_INTITIALIZED && Wrapper.hasCore()) {
-    //     Wrapper.stop();
-    //     Wrapper.unref();
-    // }
+    ReactApplicationContext context = getReactApplicationContext();
+    context.stopService(intent);
   }
 
   @ReactMethod
