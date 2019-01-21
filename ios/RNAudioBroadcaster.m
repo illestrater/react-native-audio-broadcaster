@@ -7,7 +7,13 @@
 
 - (dispatch_queue_t)methodQueue
 {
-    return dispatch_get_main_queue();
+    dispatch_queue_attr_t queueAttrs = dispatch_queue_attr_make_with_qos_class(
+        DISPATCH_QUEUE_SERIAL,
+        QOS_CLASS_USER_INITIATED, 
+        0
+    );
+
+    return dispatch_queue_create("com.cuenative.BroadcastQueue", queueAttrs);
 }
 RCT_EXPORT_MODULE()
 
