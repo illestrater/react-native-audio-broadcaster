@@ -15,12 +15,6 @@ class Broadcaster extends EventEmitter {
     super();
 
     let appEventEmitter = Platform.OS === 'ios' ? NativeAppEventEmitter : DeviceEventEmitter;
-
-    console.log('ok');
-
-    // appEventEmitter.addListener('RCTAudioPlayerEvent:' + this._playerId, (payload: Event) => {
-    //   this._handleEvent(payload.event, payload.data);
-    // });
   }
 
   init(settings, callback = _.noop) {
