@@ -2,15 +2,18 @@ package com.reactlibrary;
 
 import android.content.Intent;
 import android.content.Context;
-import android.app.Service;
+import android.app.PendingIntent;
+import android.app.IntentService;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.NotificationChannel;
+import android.net.Uri;
 import android.support.v4.app.NotificationCompat;
 import android.os.Bundle;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Process;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.WifiLock;
 import android.os.PowerManager;
@@ -18,6 +21,7 @@ import android.os.PowerManager.WakeLock;
 import android.media.AudioRecord;
 import android.media.AudioFormat;
 import android.util.Log;
+import android.R;
 
 import com.facebook.react.bridge.ReadableMap;
 
@@ -25,10 +29,15 @@ import cc.echonet.coolmicdspjava.VUMeterResult;
 import cc.echonet.coolmicdspjava.Wrapper;
 import cc.echonet.coolmicdspjava.WrapperConstants;
 
-public class AudioBroadcastService extends Service {
+public class AudioBroadcastService extends IntentService {
   private String level = "-60";
   private WakeLock wakeLock;
   private WifiLock wifiLock;
+  private Boolean continueRunning = false;
+
+  public AudioBroadcastService() {
+      super("AudioBroadcastService");
+  }
 
   @Override
   public IBinder onBind(Intent intent) {
@@ -36,11 +45,23 @@ public class AudioBroadcastService extends Service {
   }
 
   @Override
+  protected void onHandleIntent(Intent intent) {
+      Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO);
+      try {
+        while (continueRunning) {
+            Thread.sleep(5000);
+        }
+      } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+      }
+  }
+
+  @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
+    continueRunning = true;
     wakeLock.acquire();
     wifiLock.acquire();
 
-    Log.e("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ: ", "STARTED!");
     String url = intent.getStringExtra("url");
     Integer port = Integer.parseInt(intent.getStringExtra("port"));
     String username = "source";
@@ -51,16 +72,16 @@ public class AudioBroadcastService extends Service {
     String channel_string = "2";
     int sampleRate = Integer.parseInt(sampleRate_string);
 
-    Integer buffersize = AudioRecord.getMinBufferSize(Integer.parseInt(sampleRate_string), Integer.parseInt(channel_string) == 1 ? AudioFormat.CHANNEL_IN_MONO : AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT);
+    Integer buffersize = AudioRecord.getMinBufferSize(Integer.parseInt(sampleRate_string), Integer.parseInt(channel_string) == 1 ? AudioFormat.CHANNEL_IN_MONO : AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_FLOAT);
 
-    Log.e("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ: ", url);
     Wrapper.init();
-    int status = Wrapper.init(this, url, port, username, password, mount, codec_string, sampleRate, Integer.parseInt(channel_string), buffersize);
+    int status = Wrapper.init(this, url, port, username, password, mount, codec_string, sampleRate, Integer.parseInt(channel_string), buffersize*20);
 
     if (status == 0) {
         status = Wrapper.start();
-        Log.e("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ: ", "STREAMING STARTED");
     }
+
+    startForegroundService();
 
     super.onStartCommand(intent, flags, startId);
     return START_STICKY;
@@ -68,8 +89,6 @@ public class AudioBroadcastService extends Service {
 
   @Override
   public void onCreate() {
-    Log.e("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ: ", "CREATING");
-
     PowerManager powerManager = (PowerManager)this.getSystemService(Context.POWER_SERVICE);
     wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "audio-broadcast-wake-lock");
     wakeLock.setReferenceCounted(false);
@@ -79,32 +98,12 @@ public class AudioBroadcastService extends Service {
     wifiLock = wifiManager.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "audio-broadcast-wifi-lock");
     wifiLock.setReferenceCounted(false);
 
-    String packageName = this.getApplicationContext().getPackageName();
-    if (powerManager.isIgnoringBatteryOptimizations(packageName)) {
-        Log.e("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ: ", "IGNORING BATTERY OPTIMIZATIONS");
-    } else {
-        Log.e("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ: ", "BATTERY OPTIMIZATIONS HEAVY");
-    }
-
-    String CHANNEL_ID = "cue_broadcast";
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        NotificationChannel channel = new NotificationChannel(CHANNEL_ID,
-                "CUE Broadcasting",
-                NotificationManager.IMPORTANCE_DEFAULT);
-
-        ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(channel);
-    }
-
-    Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Broadcast")
-            .setContentText("Wooo").build();
-
-    startForeground(1, notification);
     super.onCreate();
   }
 
   @Override
   public void onDestroy() {
+    continueRunning = false;
     if(wakeLock.isHeld()) wakeLock.release();
     if(wifiLock.isHeld()) wifiLock.release();
 
@@ -114,6 +113,39 @@ public class AudioBroadcastService extends Service {
     }
 
     super.onDestroy();
+  }
+
+  private void startForegroundService() {
+    String packageName = this.getApplicationContext().getPackageName();
+
+    NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+    String CHANNEL_ID = "cue_broadcast";
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        NotificationChannel channel = new NotificationChannel(CHANNEL_ID,
+                "CUE Broadcasting",
+                NotificationManager.IMPORTANCE_DEFAULT);
+
+        notificationManager.createNotificationChannel(channel);
+    }
+
+    Intent intent = this.getApplicationContext().getPackageManager().getLaunchIntentForPackage(packageName);
+    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+    intent.setAction(Intent.ACTION_VIEW);
+    intent.setData(Uri.parse("audiobroadcaster://notification.click"));
+    PendingIntent pendingIntent = PendingIntent.getActivity(this.getApplicationContext(), 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+    NotificationCompat.Builder notificationBuilder = (NotificationCompat.Builder) new NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(this.getApplicationContext().getResources().getIdentifier("ic_notification", "mipmap", packageName))
+            .setContentTitle("CUE Music Broadcast")
+            .setContentText("You are broadcasting to CUE Music")
+            .setStyle(new NotificationCompat.BigTextStyle()
+                .setBigContentTitle("CUE Music Broadcast")
+                .bigText("You are broadcasting to CUE Music"))
+            .setPriority(Notification.PRIORITY_MAX)
+            .setFullScreenIntent(pendingIntent, true);
+
+    startForeground(1, notificationBuilder.build());
   }
 
   private void callbackHandler(WrapperConstants.WrapperCallbackEvents what, int arg0, int arg1) {

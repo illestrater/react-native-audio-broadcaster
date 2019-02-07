@@ -40,8 +40,6 @@ public class RNAudioBroadcasterModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void init(ReadableMap settings, Callback callback) {
-    Log.e("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ: ", "INITIALIZING");
-
     ReactApplicationContext context = getReactApplicationContext();
     Intent intentBattery = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
     intentBattery.setData(Uri.parse("package:" + "com.cuenative"));
