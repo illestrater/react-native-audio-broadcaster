@@ -1,4 +1,3 @@
-
 package com.reactlibrary;
 
 import android.media.AudioRecord;
@@ -8,6 +7,10 @@ import android.app.Service;
 import android.util.Log;
 import android.net.Uri;
 import android.provider.Settings;
+import android.os.Messenger;
+import android.os.Message;
+import android.os.Handler;
+import android.os.Bundle;
 
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -22,11 +25,10 @@ import cc.echonet.coolmicdspjava.Wrapper;
 import cc.echonet.coolmicdspjava.WrapperConstants;
 
 public class RNAudioBroadcasterModule extends ReactContextBaseJavaModule {
-  private AudioBroadcastService broadcaster = new AudioBroadcastService();
   private final ReactApplicationContext reactContext;
   private Integer initialized = 0;
-  private String level = "-60";
   private Intent intent;
+  private static String level = "-60";
 
   public RNAudioBroadcasterModule(ReactApplicationContext reactContext) {
     super(reactContext);
@@ -38,8 +40,17 @@ public class RNAudioBroadcasterModule extends ReactContextBaseJavaModule {
     return "RNAudioBroadcaster";
   }
 
+  private static class IncomingHandler extends Handler {
+    @Override
+    public void handleMessage(Message msg) {
+      Bundle message = msg.getData();
+      level = String.valueOf(msg.arg1);
+    }
+  }
+
   @ReactMethod
   public void init(ReadableMap settings, Callback callback) {
+    Messenger messenger = new Messenger(new IncomingHandler());
     ReactApplicationContext context = getReactApplicationContext();
     Intent intentBattery = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
     intentBattery.setData(Uri.parse("package:" + "com.cuenative"));
@@ -50,6 +61,7 @@ public class RNAudioBroadcasterModule extends ReactContextBaseJavaModule {
     intent.putExtra("port", String.valueOf(settings.getInt("port")));
     intent.putExtra("password", settings.getString("password"));
     intent.putExtra("mount", settings.getString("mount"));
+    intent.putExtra("messenger", messenger);
     context.startService(intent);
 
     WritableMap data = new WritableNativeMap();
@@ -70,31 +82,11 @@ public class RNAudioBroadcasterModule extends ReactContextBaseJavaModule {
   @ReactMethod
   public void levels(Callback callback) {
     WritableMap data = new WritableNativeMap();
+    Log.e("GOT LEVEL ---------------------------- ", level);
     data.putString("level", level);
     if (callback != null) {
         callback.invoke(data);
         return;
     }
-  }
-
-  private void callbackHandler(WrapperConstants.WrapperCallbackEvents what, int arg0, int arg1) {
-      switch (what) {
-          case THREAD_POST_START:
-              break;
-          case THREAD_PRE_STOP:
-              break;
-          case THREAD_POST_STOP:
-              break;
-          case ERROR:
-              break;
-          case STREAMSTATE:
-              break;
-          case RECONNECT:
-              break;
-      }
-  }
-
-  private void callbackVUMeterHandler(VUMeterResult result) {
-      level = String.valueOf(result.global_power);
   }
 }

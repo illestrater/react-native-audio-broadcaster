@@ -68,14 +68,16 @@ public class AudioBroadcastService extends IntentService {
     String password = intent.getStringExtra("password");
     String mount = intent.getStringExtra("mount");
     String codec_string = "audio/ogg; codec=vorbis";
-    String sampleRate_string = "44100";
+    String sampleRate_string = "48000";
     String channel_string = "2";
+    String quality_string= "1";
     int sampleRate = Integer.parseInt(sampleRate_string);
 
-    Integer buffersize = AudioRecord.getMinBufferSize(Integer.parseInt(sampleRate_string), Integer.parseInt(channel_string) == 1 ? AudioFormat.CHANNEL_IN_MONO : AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_FLOAT);
+    Integer buffersize = AudioRecord.getMinBufferSize(Integer.parseInt(sampleRate_string), Integer.parseInt(channel_string) == 1 ? AudioFormat.CHANNEL_IN_MONO : AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT);
 
     Wrapper.init();
     int status = Wrapper.init(this, url, port, username, password, mount, codec_string, sampleRate, Integer.parseInt(channel_string), buffersize*20);
+    int testStatus = Wrapper.performMetaDataQualityUpdate("", "", Double.parseDouble(quality_string), 0);
 
     if (status == 0) {
         status = Wrapper.start();
